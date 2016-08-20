@@ -85,16 +85,18 @@ class DateService(object):
 # |(Monday|...|Sunday)
     _dayRegex = re.compile(
         r"""(?ix)
-        ((week|day)s?\ (before|from)\ )?
+        ((week|day|month)s?\ (ago|before|from)\ )?
         (
             tomorrow
             |now
             |tonight
             |today
             |yesterday
-            |(next|this|last)[\ \b](morning|afternoon|evening|night|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Month)
+            |(next|this|last)[\ \b](morning|afternoon|evening|night
+                    |week|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday
+                    |Month|(Jan\.?(?:uary)?|Feb\.?(?:ruary)?|Mar\.?(?:ch)?|Apr\.?(?:il)?|May\.?|Jun\.?e?|Jul\.?y?|Aug\.?(?:ust)?|Sep\.?(?:tember)?|Oct\.?(?:ober)?|Nov\.?(?:ember)?|Dec\.?(?:ember)?))
             |(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)
-        )
+        )?
         """)
 
     # mon day year
@@ -269,17 +271,19 @@ class DateService(object):
             A list of datetime objects containing the extracted date from the
             input snippet, or an empty list if none found.
         """
-        def extractDayOfWeek(dayMatch):
-            if dayMatch.group(7) in self.__daysOfWeek__:
-                return self.__daysOfWeek__.index(dayMatch.group(7))
+        def extractDayOfWeek(dateMatch):
+            if dateMatch.group(8) in self.__daysOfWeek__:
+                return self.__daysOfWeek__.index(dateMatch.group(8))
+            if dateMatch.group(6) in self.__daysOfWeek__:
+                return self.__daysOfWeek__.index(dateMatch.group(6))
 
-        def extractDaysFrom(dayMatch):
-            if not dayMatch.group(1):
+        def extractDaysFrom(dateMatch):
+            if not dateMatch.group(1):
                 return 0
 
-            def numericalPrefix(dayMatch):
+            def numericalPrefix(dateMatch):
                 # Grab 'three' of 'three weeks from'
-                prefix = input[max(0, dayMatch - 50):dayMatch.start].strip().split(' ')
+                prefix = input[max(0, dateMatch - 50):dateMatch.start].strip().split(' ')
                 prefix.reverse()
                 prefix = [x for x in prefix if x != "and"]
 
@@ -296,16 +300,22 @@ class DateService(object):
                     return service.parse(num)
                 return 1
 
-            factor = numericalPrefix(dayMatch)
-            if (dayMatch.group(3) == 'before'):
+            factor = numericalPrefix(dateMatch)
+            if (dateMatch.group(3) == 'before'):
                 factor = -factor
 
-            if dayMatch.group(2) == 'week':
+            if dateMatch.group(2) == 'week':
                 return factor * 7
-            elif dayMatch.group(2) == 'day':
+            elif dateMatch.group(2) == 'day':
                 return factor * 1
+            elif dateMatch.group(2) == 'month':
+                return factor * 30
 
-        def handleMatch(dayMatch):
+        def extractMonth(dayMatch):
+            if dayMatch[:3] in self.__startMonths__:
+                return self.__startMonths__.index(dayMatch[:3]) + 1
+
+        def handleMatch(dateMatch):
             def safe(exp):
                 """For safe evaluation of regex groups"""
                 try:
@@ -313,19 +323,55 @@ class DateService(object):
                 except:
                     return False
 
-            days_from = safe(lambda: extractDaysFrom(dayMatch))
-            today = safe(lambda: dayMatch.group(4) in self.__todayMatches__)
-            tomorrow = safe(lambda: dayMatch.group(4)
-                            in self.__tomorrowMatches__)
-            yesterday = safe(lambda: dayMatch.group(4)
-                             in self.__yesterdayMatches__)
-            next_week = safe(lambda: dayMatch.group(5) == 'next')
-            last_week = safe(lambda: dayMatch.group(5) == 'last')
-            day_of_week = safe(lambda: extractDayOfWeek(dayMatch))
+            def generateDate(year, month):
+                '''generate date from year and month'''
+                while (month <= 0):
+                    year -= 1
+                    month += 12
+                while (month > 12):
+                    year += 1
+                    month -= 12
+                return '%02d/XX/%d' % (month, year)
 
-            # Convert extracted terms to datetime object
-            if not dayMatch:
+            days_from = safe(lambda: extractDaysFrom(dateMatch))
+            today = safe(lambda: dateMatch.group(4) in self.__todateMatches__)
+            tomorrow = safe(lambda: dateMatch.group(4)
+                            in self.__tomorrowMatches__)
+            yesterday = safe(lambda: dateMatch.group(4)
+                             in self.__yesterdateMatches__)
+            next_week = safe(lambda: dateMatch.group(5) == 'next')
+            last_week = safe(lambda: dateMatch.group(5) == 'last')
+            isMonth = safe(lambda: dateMatch.group(6) == 'month' or
+                         dateMatch.group(2) == 'month')
+            month_of_year = safe(lambda:extractMonth(dateMatch.group(7)))
+            day_of_week = safe(lambda: extractDayOfWeek(dateMatch))
+
+            if not dateMatch:
                 return None
+
+            if (isMonth):
+                year = self.now.year
+                month = self.now.month
+                if days_from:
+                    month += days_from // 30
+                else:
+                    if next_week:
+                        month += 1
+                    elif last_week:
+                        month -= 1
+                return (generateDate(year, month), dateMatch)
+            elif (month_of_year):
+                year = self.now.year
+                month = self.now.month
+                if next_week:
+                    if month >= month_of_year:
+                        year += 1
+                elif last_week:
+                    if month <= month_of_year:
+                        year -= 1
+                month = month_of_year
+                return (generateDate(year, month), dateMatch)
+            # Convert extracted terms to datetime object
             elif today:
                 d = self.now
             elif tomorrow:
@@ -343,17 +389,25 @@ class DateService(object):
 
                 d = self.now + \
                     datetime.timedelta(days=num_days_away)
+            else:
+                num_days_away = 0
+                if next_week:
+                    num_days_away += 7
+                if last_week:
+                    num_days_away -= 7
+                d = self.now + \
+                    datetime.timedelta(days=num_days_away)
 
             if days_from:
                 d += datetime.timedelta(days=days_from)
             year, mon, day = d.isoformat().split('-')
             d = '/'.join([mon, day[:2], year])
 
-            return (d, dayMatch)
+            return (d, dateMatch)
 
         matches = self._dayRegex.finditer(input)
 
-        return [handleMatch(dayMatch) for dayMatch in matches]
+        return [handleMatch(dateMatch) for dateMatch in matches]
 
     def extractDay(self, input):
         """Returns the first time-related date found in the input string,
