@@ -1,6 +1,5 @@
 import re
 import datetime
-from itertools import izip_longest
 from numbers import NumberService
 
 
@@ -28,101 +27,92 @@ class DateService(object):
         else:
             self.now = datetime.datetime.now(tz=self.tz)
 
-    __months__ = ['january', 'february', 'march', 'april', 'may', 'june',
-                  'july', 'august', 'september', 'october', 'november',
-                  'december']
-
-    __shortMonths__ = ['jan', 'feb', 'mar', 'apr', 'may',
-                       'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec']
+    __startMonths__ = ['jan', 'feb', 'mar', 'apr', 'may',
+                       'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 
     __daysOfWeek__ = ['monday', 'tuesday', 'wednesday',
                       'thursday', 'friday', 'saturday', 'sunday']
 
     __relativeDates__ = ['tomorrow', 'tonight', 'next']
 
-    __todayMatches__ = ['tonight', 'today', 'this morning',
+    __todayMatches__ = ['tonight', 'today', 'this morning', 'now'
                         'this evening', 'this afternoon']
 
-    __tomorrowMatches__ = ['tomorrow', 'next morning',
+    __tomorrowMatches__ = ['yesterday', 'last morning', 'last night'
+                           'last evening', 'last afternoon']
+
+    __yesterdayMatches__ = ['tomorrow', 'next morning', 'next night'
                            'next evening', 'next afternoon']
 
     __dateDescriptors__ = {
-        'one': 1,
-        'first': 1,
-        'two': 2,
-        'second': 2,
-        'three': 3,
-        'third': 3,
-        'four': 4,
-        'fourth': 4,
-        'five': 5,
-        'fifth': 5,
-        'six': 6,
-        'sixth': 6,
-        'seven': 7,
-        'seventh': 7,
-        'eight': 8,
-        'eighth': 8,
-        'nine': 9,
-        'ninth': 9,
-        'ten': 10,
-        'tenth': 10,
-        'eleven': 11,
-        'eleventh': 11,
-        'twelve': 12,
-        'twelth': 12,
-        'thirteen': 13,
-        'thirteenth': 13,
-        'fourteen': 14,
-        'fourteenth': 14,
-        'fifteen': 15,
-        'fifteenth': 15,
-        'sixteen': 16,
-        'sixteenth': 16,
-        'seventeen': 17,
-        'seventeenth': 17,
-        'eighteen': 18,
-        'eighteenth': 18,
-        'nineteen': 19,
-        'nineteenth': 19,
-        'twenty': 20,
-        'twentieth': 20,
-        'twenty one': 21,
-        'twenty first': 21,
-        'twenty two': 22,
-        'twenty second': 22,
-        'twenty three': 23,
-        'twenty third': 23,
-        'twenty four': 24,
-        'twenty fourth': 24,
-        'twenty five': 25,
-        'twenty fifth': 25,
-        'twenty six': 26,
-        'twenty sixth': 26,
-        'twenty seven': 27,
-        'twenty seventh': 27,
-        'twenty eight': 28,
-        'twenty eighth': 28,
-        'twenty nine': 29,
-        'twenty ninth': 29,
-        'thirty': 30,
-        'thirtieth': 30,
-        'thirty one': 31,
-        'thirty first': 31
+        'a': 1, '1st': 1, 'one': 1, 'first': 1,
+        '2nd': 2, 'two': 2, 'second': 2,
+        '3rd': 3, 'three': 3, 'third': 3,
+        '4th': 4, 'four': 4, 'fourth': 4,
+        '5th': 5, 'five': 5, 'fifth': 5,
+        '6th': 6, 'six': 6, 'sixth': 6,
+        '7th': 7, 'seven': 7, 'seventh': 7,
+        '8th': 8, 'eight': 8, 'eighth': 8,
+        '9th': 9, 'nine': 9, 'ninth': 9,
+        '10th': 10, 'ten': 10, 'tenth': 10,
+        '11th': 11, 'eleven': 11, 'eleventh': 11,
+        '12th': 12, 'twelve': 12, 'twelth': 12,
+        '13th': 13, 'thirteen': 13, 'thirteenth': 13,
+        '14th': 14, 'fourteen': 14, 'fourteenth': 14,
+        '15th': 15, 'fifteen': 15, 'fifteenth': 15,
+        '16th': 16, 'sixteen': 16, 'sixteenth': 16,
+        '17th': 17, 'seventeen': 17, 'seventeenth': 17,
+        '18th': 18, 'eighteen': 18, 'eighteenth': 18,
+        '19th': 19, 'nineteen': 19, 'nineteenth': 19,
+        '20th': 20, 'twenty': 20, 'twentieth': 20,
+        '21st': 21, 'twenty one': 21, 'twenty first': 21,
+        '22nd': 22, 'twenty two': 22, 'twenty second': 22,
+        '23rd': 23, 'twenty three': 23, 'twenty third': 23,
+        '24th': 24, 'twenty four': 24, 'twenty fourth': 24,
+        '25th': 25, 'twenty five': 25, 'twenty fifth': 25,
+        '26th': 26, 'twenty six': 26, 'twenty sixth': 26,
+        '27th': 27, 'twenty seven': 27, 'twenty seventh': 27,
+        '28th': 28, 'twenty eight': 28, 'twenty eighth': 28,
+        '29th': 29, 'twenty nine': 29, 'twenty ninth': 29,
+        '30th': 30, 'thirty': 30, 'thirtieth': 30,
+        '31st': 31, 'thirty one': 31, 'thirty first': 31
     }
 
+# will extract semantic dates
+# (number)?(week|day(s)?\ from\ )?
+# |tomorrow|today|tonight
+# |next|this|last (morning|afternoon|evening|Monday|...|Sunday|Month)
+# |(Monday|...|Sunday)
     _dayRegex = re.compile(
         r"""(?ix)
-        ((week|day)s?\ from\ )?
+        ((week|day)s?\ (before|from)\ )?
         (
             tomorrow
+            |now
             |tonight
             |today
-            |(next|this)[\ \b](morning|afternoon|evening|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)
+            |yesterday
+            |(next|this|last)[\ \b](morning|afternoon|evening|night|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Month)
             |(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)
-            |(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sept(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\ (\w+)((\s|\-)?\w*)
         )
         """)
+
+    # mon day year
+    _dayRegex2 = re.compile(
+            r'(?ix)(Jan\.?(?:uary)?|Feb\.?(?:ruary)?|Mar\.?(?:ch)?|Apr\.?(?:il)?|May\.?|Jun\.?e?|Jul\.?y?|Aug\.?(?:ust)?|Sep\.?(?:tember)?|Oct\.?(?:ober)?|Nov\.?(?:ember)?|Dec\.?(?:ember)?)[., ]+(\w+)(.{,4}(\b\d{4}\b))?'
+    )
+
+    # day mon year
+    _dayRegex3 = re.compile(
+            r'(?ix)(\w+)[., ]+(Jan\.?(?:uary)?|Feb\.?(?:ruary)?|Mar\.?(?:ch)?|Apr\.?(?:il)?|May\.?|Jun\.?e?|Jul\.?y?|Aug\.?(?:ust)?|Sep\.?(?:tember)?|Oct\.?(?:ober)?|Nov\.?(?:ember)?|Dec\.?(?:ember)?)(.{,4}(\b\d{4}\b))?'
+    )
+
+    # month/day/year
+    _dayRegex4 = re.compile('\D(\d{1,2}/\d{1,2}/\d{4})\D')
+
+    #only year
+    _dayRegex5 = re.compile('\D(\d{4})\D')
+
 
     _timeRegex = re.compile(
         r"""(?ix)
@@ -139,7 +129,136 @@ class DateService(object):
     def _preprocess(self, input):
         return input.replace('-', ' ').lower()
 
+    def combineDays(self, DaysA, DaysB):
+        if not DaysA:
+            return DaysB
+        if not DaysB:
+            return DaysA
+
+        def combine(A, B):
+            if (not A) and (not B):
+                return []
+            if not A:
+                return B
+            if not B:
+                return A
+            itemA = A[0]
+            itemB = B[0]
+            if (itemA[1].end() <= itemB[1].start()):
+                return [itemA] + combine(A[1:], B)
+            if (itemB[1].end() <= itemA[1].start()):
+                return [itemB] + combine(A, B[1:])
+            if (itemA[0].find('X') >= 0):
+                return [itemB] + combine(A[1:], B[1:])
+            else:
+                return [itemA] + combine(A[1:], B[1:])
+        DaysA = [day for day in DaysA if day]
+        DaysB = [day for day in DaysB if day]
+        return combine(DaysA, DaysB)
+
     def extractDays(self, input):
+        def extractMonth(dayMatch):
+            if dayMatch[:3] in self.__startMonths__:
+                return self.__startMonths__.index(dayMatch[:3]) + 1
+
+        def extractDay(dayMatch):
+            if dayMatch in self.__dateDescriptors__:
+                return self.__dateDescriptors__[dayMatch]
+            elif dayMatch.isalnum() and \
+                (int(dayMatch) in self.__dateDescriptors__.values()):
+                return int(dayMatch)
+
+        def extractYear(dayMatch):
+            if (not dayMatch):
+                return None
+            if (not dayMatch.isalnum()):
+                return None
+            year = int(dayMatch)
+            if (1000 <= year <= 2020):
+                return year
+
+        def handleMatch(dateMatch):
+            def safe(exp):
+                """For safe evaluation of regex groups"""
+                try:
+                    return exp()
+                except:
+                    return False
+
+            month = safe(lambda: extractMonth(dateMatch.group(1)))
+            day = safe(lambda: extractDay(dateMatch.group(2)))
+            year = safe(lambda: extractYear(dateMatch.group(4)))
+            if not year:
+                year = safe(lambda: extractYear(dateMatch.group(2)))
+
+            if year and day:
+                d = '/'.join(['%02d' % month, '%02d' % day, str(year)])
+            elif day:
+                d = '/'.join(['%02d' % month, '%02d' % day, str(self.now.year)])
+            elif year:
+                d = '/'.join(['%02d' % month, 'XX', str(year)])
+            else:
+                d = '/'.join(['%02d' % month, 'XX', 'XX'])
+            return (d, dateMatch)
+
+        def handleMatch2(dateMatch):
+            def safe(exp):
+                """For safe evaluation of regex groups"""
+                try:
+                    return exp()
+                except:
+                    return False
+
+            month = safe(lambda: extractMonth(dateMatch.group(2)))
+            day = safe(lambda: extractDay(dateMatch.group(1)))
+            year = safe(lambda: extractYear(dateMatch.group(4)))
+
+            if year and day:
+                d = '/'.join(['%02d' % month, '%02d' % day, str(year)])
+            elif day:
+                d = '/'.join(['%02d' % month, '%02d' % day, str(self.now.year)])
+            elif year:
+                d = '/'.join(['%02d' % month, 'XX', str(year)])
+            else:
+                d = '/'.join(['%02d' % month, 'XX', 'XX'])
+            return (d, dateMatch)
+
+        def handleMatch3(dateMatch):
+            month, day, year = dateMatch.group(1).split('/')
+            try:
+                datetime.datetime(year, month, day)
+                d = '/'.join(['%02d' % month, '%02d' % day, str(year)])
+                return (d, dateMatch)
+            except:
+                return None
+
+        def handleMatch4(dateMatch):
+            if extractYear(dateMatch.group(1)):
+                return ('XX/XX/%d' % extractYear(dateMatch.group(1)), dateMatch)
+            else:
+                return None
+
+        # format1 month, day, year
+        matches = self._dayRegex2.finditer(input)
+        Days = [handleMatch(dateMatch) for dateMatch in matches]
+
+        # format2 day, month, year
+        matches = self._dayRegex3.finditer(input)
+        Days = self.combineDays(Days,
+                                [handleMatch2(dateMatch) for dateMatch in matches])
+
+        # month/day/year
+        matches = self._dayRegex4.finditer(input)
+        Days = self.combineDays(Days,
+                                [handleMatch3(dateMatch) for dateMatch in matches])
+
+        # only year
+        matches = self._dayRegex5.finditer(input)
+        Days = self.combineDays(Days,
+                                [handleMatch4(dateMatch) for dateMatch in matches])
+        return Days
+
+    def extractIrrDays(self, input):
         """Extracts all day-related information from an input string.
         Ignores any information related to the specific time-of-day.
 
@@ -150,28 +269,9 @@ class DateService(object):
             A list of datetime objects containing the extracted date from the
             input snippet, or an empty list if none found.
         """
-        input = self._preprocess(input)
-
         def extractDayOfWeek(dayMatch):
-            if dayMatch.group(5) in self.__daysOfWeek__:
-                return self.__daysOfWeek__.index(dayMatch.group(5))
-            elif dayMatch.group(6) in self.__daysOfWeek__:
-                return self.__daysOfWeek__.index(dayMatch.group(6))
-
-        def extractMonth(dayMatch):
-            if dayMatch.group(7) in self.__months__:
-                return self.__months__.index(dayMatch.group(7)) + 1
-            elif dayMatch.group(7) in self.__shortMonths__:
-                return self.__shortMonths__.index(dayMatch.group(7)) + 1
-
-        def extractDay(dayMatch):
-            combined = dayMatch.group(8) + dayMatch.group(9)
-            if combined in self.__dateDescriptors__:
-                return self.__dateDescriptors__[combined]
-            elif dayMatch.group(8) in self.__dateDescriptors__:
-                return self.__dateDescriptors__[dayMatch.group(8)]
-            elif int(dayMatch.group(8)) in self.__dateDescriptors__.values():
-                return int(dayMatch.group(8))
+            if dayMatch.group(7) in self.__daysOfWeek__:
+                return self.__daysOfWeek__.index(dayMatch.group(7))
 
         def extractDaysFrom(dayMatch):
             if not dayMatch.group(1):
@@ -179,9 +279,9 @@ class DateService(object):
 
             def numericalPrefix(dayMatch):
                 # Grab 'three' of 'three weeks from'
-                prefix = input.split(dayMatch.group(1))[0].strip().split(' ')
+                prefix = input[max(0, dayMatch - 50):dayMatch.start].strip().split(' ')
                 prefix.reverse()
-                prefix = filter(lambda s: s != 'and', prefix)
+                prefix = [x for x in prefix if x != "and"]
 
                 # Generate best guess number
                 service = NumberService()
@@ -197,6 +297,8 @@ class DateService(object):
                 return 1
 
             factor = numericalPrefix(dayMatch)
+            if (dayMatch.group(3) == 'before'):
+                factor = -factor
 
             if dayMatch.group(2) == 'week':
                 return factor * 7
@@ -212,13 +314,14 @@ class DateService(object):
                     return False
 
             days_from = safe(lambda: extractDaysFrom(dayMatch))
-            today = safe(lambda: dayMatch.group(3) in self.__todayMatches__)
-            tomorrow = safe(lambda: dayMatch.group(3)
+            today = safe(lambda: dayMatch.group(4) in self.__todayMatches__)
+            tomorrow = safe(lambda: dayMatch.group(4)
                             in self.__tomorrowMatches__)
-            next_week = safe(lambda: dayMatch.group(4) == 'next')
+            yesterday = safe(lambda: dayMatch.group(4)
+                             in self.__yesterdayMatches__)
+            next_week = safe(lambda: dayMatch.group(5) == 'next')
+            last_week = safe(lambda: dayMatch.group(5) == 'last')
             day_of_week = safe(lambda: extractDayOfWeek(dayMatch))
-            month = safe(lambda: extractMonth(dayMatch))
-            day = safe(lambda: extractDay(dayMatch))
 
             # Convert extracted terms to datetime object
             if not dayMatch:
@@ -227,24 +330,26 @@ class DateService(object):
                 d = self.now
             elif tomorrow:
                 d = self.now + datetime.timedelta(days=1)
+            elif yesterday:
+                d = self.now - datetime.timedelta(days=-1)
             elif day_of_week:
                 current_day_of_week = self.now.weekday()
                 num_days_away = (day_of_week - current_day_of_week) % 7
 
                 if next_week:
                     num_days_away += 7
+                if last_week:
+                    num_days_away -= 7
 
                 d = self.now + \
                     datetime.timedelta(days=num_days_away)
-            elif month and day:
-                d = datetime.datetime(
-                    self.now.year, month, day,
-                    self.now.hour, self.now.minute)
 
             if days_from:
                 d += datetime.timedelta(days=days_from)
+            year, mon, day = d.isoformat().split('-')
+            d = '/'.join([mon, day[:2], year])
 
-            return d
+            return (d, dayMatch)
 
         matches = self._dayRegex.finditer(input)
 
@@ -258,93 +363,7 @@ class DateService(object):
             return day[0]
         return None
 
-    def extractTimes(self, input):
-        """Extracts time-related information from an input string.
-        Ignores any information related to the specific date, focusing
-        on the time-of-day.
-
-        Args:
-            input (str): Input string to be parsed.
-
-        Returns:
-            A list of datetime objects containing the extracted times from the
-            input snippet, or an empty list if none found.
-        """
-        def handleMatch(time):
-            relative = False
-
-            if not time:
-                return None
-
-            # Default times: 8am, 12pm, 7pm
-            elif time.group(1) == 'morning':
-                h = 8
-                m = 0
-            elif time.group(1) == 'afternoon':
-                h = 12
-                m = 0
-            elif time.group(1) == 'evening':
-                h = 19
-                m = 0
-            elif time.group(4) and time.group(5):
-                h, m = 0, 0
-
-                # Extract hours difference
-                converter = NumberService()
-                try:
-                    diff = converter.parse(time.group(4))
-                except:
-                    return None
-
-                if time.group(5) == 'hours':
-                    h += diff
-                else:
-                    m += diff
-
-                # Extract minutes difference
-                if time.group(6):
-                    converter = NumberService()
-                    try:
-                        diff = converter.parse(time.group(7))
-                    except:
-                        return None
-
-                    if time.group(8) == 'hours':
-                        h += diff
-                    else:
-                        m += diff
-
-                relative = True
-            else:
-                # Convert from "HH:MM pm" format
-                t = time.group(2)
-                h, m = int(t.split(':')[0]) % 12, int(t.split(':')[1])
-
-                try:
-                    if time.group(3) == 'pm':
-                        h += 12
-                except IndexError:
-                    pass
-
-            if relative:
-                return self.now + datetime.timedelta(hours=h, minutes=m)
-            else:
-                return datetime.datetime(
-                    self.now.year, self.now.month, self.now.day, h, m
-                )
-
-        input = self._preprocess(input)
-        return [handleMatch(time) for time in self._timeRegex.finditer(input)]
-
-    def extractTime(self, input):
-        """Returns the first time-related date found in the input string,
-        or None if not found."""
-        times = self.extractTimes(input)
-        if times:
-            return times[0]
-        return None
-
-    def extractDates(self, input):
+    def extractDates(self, input, irregular=True):
         """Extract semantic date information from an input string.
         In effect, runs both parseDay and parseTime on the input
         string and merges the results to produce a comprehensive
@@ -352,27 +371,18 @@ class DateService(object):
 
         Args:
             input (str): Input string to be parsed.
+            irregular: get irregular date
 
         Returns:
             A list of datetime objects containing the extracted dates from the
             input snippet, or an empty list if not found.
         """
-        def merge((day, time)):
-            if not (day or time):
-                return None
-
-            if not day:
-                return time
-            if not time:
-                return day
-
-            return datetime.datetime(
-                day.year, day.month, day.day, time.hour, time.minute
-            )
+        input = self._preprocess(input)
 
         days = self.extractDays(input)
-        times = self.extractTimes(input)
-        return map(merge, izip_longest(days, times, fillvalue=None))
+        if (irregular):
+            days = self.combineDays(days, self.extractIrrDays(input))
+        return days
 
     def extractDate(self, input):
         """Returns the first date found in the input string, or None if not
@@ -470,7 +480,7 @@ class DateService(object):
         return dayString + " at " + timeString
 
 
-def extractDates(input, tz=None, now=None):
+def extractDates(input, tz=None, now=None, irregular=True):
     """Extract semantic date information from an input string.
     This is a convenience method which would only be used if
     you'd rather not initialize a DateService object.
@@ -489,4 +499,4 @@ def extractDates(input, tz=None, now=None):
         A list of datetime objects extracted from input.
     """
     service = DateService(tz=tz, now=now)
-    return service.extractDates(input)
+    return service.extractDates(input, irregular)
