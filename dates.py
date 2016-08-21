@@ -85,7 +85,7 @@ class DateService(object):
 # |(Monday|...|Sunday)
     _dayRegex = re.compile(
         r"""(?ix)
-        ((week|day|month)s?\ (ago|before|from)\ ?)?
+        ((week|day|month|year)s?\ (ago|before|from)\ ?)?
         (
             tomorrow
             |now
@@ -95,18 +95,19 @@ class DateService(object):
             |(next|this|last)[\ \b](morning|afternoon|evening|night
                     |week|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday
                     |Month|(Jan\.?(?:uary)?|Feb\.?(?:ruary)?|Mar\.?(?:ch)?|Apr\.?(?:il)?|May\.?|Jun\.?e?|Jul\.?y?|Aug\.?(?:ust)?|Sep\.?(?:tember)?|Oct\.?(?:ober)?|Nov\.?(?:ember)?|Dec\.?(?:ember)?))
+                    |year
             |(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)
         )?
         """)
 
     # mon day year
     _dayRegex2 = re.compile(
-            r'(?ix)(Jan\.?(?:uary)?|Feb\.?(?:ruary)?|Mar\.?(?:ch)?|Apr\.?(?:il)?|May\.?|Jun\.?e?|Jul\.?y?|Aug\.?(?:ust)?|Sep\.?(?:tember)?|Oct\.?(?:ober)?|Nov\.?(?:ember)?|Dec\.?(?:ember)?)[., ]+(\w+)(.{,4}(\b\d{4}\b))?'
+            r'(?ix)(\bJan\.?(?:uary)?\b|\bFeb\.?(?:ruary)?\b|\bMar\.?(?:ch)?\b|\bApr\.?(?:il)?\b|\bMay\.?\b|\bJun\.?e?\b|\bJul\.?y?\b|\bAug\.?(?:ust)?\b|\bSep\.?(?:tember)?\b|\bOct\.?(?:ober)?\b|\bNov\.?(?:ember)?\b|\bDec\.?(?:ember)?\b)[., ]+(\w{,5})(.{,4}(\b\d{4}\b))?'
     )
 
     # day mon year
     _dayRegex3 = re.compile(
-            r'(?ix)(\w+)[., ]+(Jan\.?(?:uary)?|Feb\.?(?:ruary)?|Mar\.?(?:ch)?|Apr\.?(?:il)?|May\.?|Jun\.?e?|Jul\.?y?|Aug\.?(?:ust)?|Sep\.?(?:tember)?|Oct\.?(?:ober)?|Nov\.?(?:ember)?|Dec\.?(?:ember)?)(.{,4}(\b\d{4}\b))?'
+            r'(?ix)(\w{,5})[., ]+(\bJan\.?(?:uary)?\b|\bFeb\.?(?:ruary)?\b|\bMar\.?(?:ch)?\b|\bApr\.?(?:il)?\b|\bMay\.?\b|\bJun\.?e?\b|\bJul\.?y?\b|\bAug\.?(?:ust)?\b|\bSep\.?(?:tember)?\b|\bOct\.?(?:ober)?\b|\bNov\.?(?:ember)?\b|\bDec\.?(?:ember)?\b)(.{,4}(\b\d{4}\b))?'
     )
 
     # month/day/year
@@ -176,7 +177,7 @@ class DateService(object):
             if (not dayMatch.isalnum()):
                 return None
             year = int(dayMatch)
-            if (1000 <= year <= 2020):
+            if (1800 <= year <= 2020):
                 return year
 
         def handleMatch(dateMatch):
@@ -190,18 +191,19 @@ class DateService(object):
             month = safe(lambda: extractMonth(dateMatch.group(1)))
             day = safe(lambda: extractDay(dateMatch.group(2)))
             year = safe(lambda: extractYear(dateMatch.group(4)))
-            if not year:
-                year = safe(lambda: extractYear(dateMatch.group(2)))
 
             if year and day:
                 d = '/'.join(['%02d' % month, '%02d' % day, str(year)])
+                return (d, range(dateMatch.start(1), dateMatch.end(4)))
             elif day:
                 d = '/'.join(['%02d' % month, '%02d' % day, str(self.now.year)])
+                return (d, range(dateMatch.start(1), dateMatch.end(2)))
             elif year:
                 d = '/'.join(['%02d' % month, 'XX', str(year)])
+                return (d, range(dateMatch.start(1), dateMatch.end(4)))
             else:
-                d = '/'.join(['%02d' % month, 'XX', 'XX'])
-            return (d, range(dateMatch.start(), dateMatch.end()))
+                d = '/'.join(['%02d' % month, 'XX', str(self.now.year)])
+                return (d, range(dateMatch.start(1), dateMatch.end(1)))
 
         def handleMatch2(dateMatch):
             def safe(exp):
@@ -217,13 +219,16 @@ class DateService(object):
 
             if year and day:
                 d = '/'.join(['%02d' % month, '%02d' % day, str(year)])
+                return (d, range(dateMatch.start(1), dateMatch.end(4)))
             elif day:
                 d = '/'.join(['%02d' % month, '%02d' % day, str(self.now.year)])
+                return (d, range(dateMatch.start(1), dateMatch.end(2)))
             elif year:
                 d = '/'.join(['%02d' % month, 'XX', str(year)])
+                return (d, range(dateMatch.start(2), dateMatch.end(4)))
             else:
-                d = '/'.join(['%02d' % month, 'XX', 'XX'])
-            return (d, range(dateMatch.start(), dateMatch.end()))
+                d = '/'.join(['%02d' % month, 'XX', str(self.now.year)])
+                return (d, range(dateMatch.start(2), dateMatch.end(2)))
 
         def handleMatch3(dateMatch):
             month, day, year = dateMatch.group(2).split('/')
@@ -308,6 +313,8 @@ class DateService(object):
                 return (factor * 1, off)
             elif dateMatch.group(2) == 'month':
                 return (factor * 30, off)
+            elif dateMatch.group(2) == 'year':
+                return (factor * 365, off)
 
         def extractMonth(dayMatch):
             if dayMatch[:3] in self.__startMonths__:
@@ -341,6 +348,8 @@ class DateService(object):
             last_week = safe(lambda: dateMatch.group(5) == 'last')
             isMonth = safe(lambda: dateMatch.group(6) == 'month' or
                          dateMatch.group(2) == 'month')
+            isYear = safe(lambda: dateMatch.group(6) == 'year' or
+                         dateMatch.group(2) == 'year')
             month_of_year = safe(lambda:extractMonth(dateMatch.group(7)))
             day_of_week = safe(lambda: extractDayOfWeek(dateMatch))
 
@@ -354,7 +363,17 @@ class DateService(object):
                 days_from, off = days_from
                 stIdx += off
 
-            if (isMonth):
+            if (isYear):
+                year = self.now.year
+                if days_from:
+                    year += days_from // 365
+                else:
+                    if next_week:
+                        year += 1
+                    elif last_week:
+                        year -= 1
+                return ('XX/XX/%d' % year, range(stIdx, edIdx))
+            elif (isMonth):
                 year = self.now.year
                 month = self.now.month
                 if days_from:
@@ -383,9 +402,11 @@ class DateService(object):
                 d = self.now + datetime.timedelta(days=1)
             elif yesterday:
                 d = self.now - datetime.timedelta(days=-1)
-            elif day_of_week:
-                current_day_of_week = self.now.weekday()
-                num_days_away = (day_of_week - current_day_of_week) % 7
+            elif (not day_of_week is None) or (dateMatch.group(6) == 'week'):
+                num_days_away = 0
+                if not day_of_week is None:
+                    current_day_of_week = self.now.weekday()
+                    num_days_away = (day_of_week - current_day_of_week) % 7
 
                 if next_week:
                     num_days_away += 7
