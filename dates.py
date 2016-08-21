@@ -110,7 +110,7 @@ class DateService(object):
     )
 
     # month/day/year
-    _dayRegex4 = re.compile('\D(\d{1,2}/\d{1,2}/\d{4})\D')
+    _dayRegex4 = re.compile(r'(\D|\b)(\d{1,2}/\d{1,2}/\d{4})(\D|\b)')
 
     #only year
     _dayRegex5 = re.compile('\D(\d{4})\D')
@@ -148,9 +148,9 @@ class DateService(object):
                 return A
             itemA = A[0]
             itemB = B[0]
-            if (itemA[1].end() <= itemB[1].start()):
+            if (itemA[1].stop <= itemB[1].start):
                 return [itemA] + combine(A[1:], B)
-            if (itemB[1].end() <= itemA[1].start()):
+            if (itemB[1].stop <= itemA[1].start):
                 return [itemB] + combine(A, B[1:])
             if (itemA[0].count('X') >= itemB[0].count('X')):
                 return [itemB] + combine(A[1:], B[1:])
@@ -201,7 +201,7 @@ class DateService(object):
                 d = '/'.join(['%02d' % month, 'XX', str(year)])
             else:
                 d = '/'.join(['%02d' % month, 'XX', 'XX'])
-            return (d, dateMatch)
+            return (d, range(dateMatch.start(), dateMatch.end()))
 
         def handleMatch2(dateMatch):
             def safe(exp):
@@ -223,20 +223,24 @@ class DateService(object):
                 d = '/'.join(['%02d' % month, 'XX', str(year)])
             else:
                 d = '/'.join(['%02d' % month, 'XX', 'XX'])
-            return (d, dateMatch)
+            return (d, range(dateMatch.start(), dateMatch.end()))
 
         def handleMatch3(dateMatch):
-            month, day, year = dateMatch.group(1).split('/')
+            month, day, year = dateMatch.group(2).split('/')
+            month = int(month)
+            day = int(day)
+            year = int(year)
             try:
                 datetime.datetime(year, month, day)
                 d = '/'.join(['%02d' % month, '%02d' % day, str(year)])
-                return (d, dateMatch)
+                return (d, range(dateMatch.start(2), dateMatch.end(2)))
             except:
                 return None
 
         def handleMatch4(dateMatch):
             if extractYear(dateMatch.group(1)):
-                return ('XX/XX/%d' % extractYear(dateMatch.group(1)), dateMatch)
+                return ('XX/XX/%d' % extractYear(dateMatch.group(1)),
+                        range(dateMatch.start(1), dateMatch.end(1)))
             else:
                 return None
 
@@ -283,32 +287,27 @@ class DateService(object):
 
             def numericalPrefix(dateMatch):
                 # Grab 'three' of 'three weeks from'
-                prefix = input[max(0, dateMatch.start() - 50):dateMatch.start()].strip().split(' ')
-                prefix.reverse()
-                prefix = [x for x in prefix if x != "and"]
+                prefixStr = input[max(0, dateMatch.start() - 50):dateMatch.start()]
+                prefix = [(match.group(), match.start() - len(prefixStr))
+                          for match in re.finditer('[a-zA-Z-]', prefixStr)]
                 # Generate best guess number
                 service = NumberService()
-                num = prefix[0]
-                if service.isValid(num):
-                    for n in prefix[1:]:
-                        inc = n + " " + num
-                        if service.isValid(inc):
-                            num = inc
-                        else:
-                            break
-                    return service.parse(num)
-                return 1
+                for i in range(len(prefix)):
+                    num = ' '.join([st for st, off in prefix[i:]])
+                    if service.isValid(num):
+                        return (service.parse(num), prefix[i][1])
+                return (1, 0)
 
-            factor = numericalPrefix(dateMatch)
+            factor, off = numericalPrefix(dateMatch)
             if (dateMatch.group(3) == 'before' or dateMatch.group(3) == 'ago'):
                 factor = -factor
 
             if dateMatch.group(2) == 'week':
-                return factor * 7
+                return (factor * 7, off)
             elif dateMatch.group(2) == 'day':
-                return factor * 1
+                return (factor * 1, off)
             elif dateMatch.group(2) == 'month':
-                return factor * 30
+                return (factor * 30, off)
 
         def extractMonth(dayMatch):
             if dayMatch[:3] in self.__startMonths__:
@@ -348,6 +347,13 @@ class DateService(object):
             if not dateMatch:
                 return None
 
+            stIdx = dateMatch.start()
+            edIdx = dateMatch.end()
+
+            if days_from:
+                days_from, off = days_from
+                stIdx += off
+
             if (isMonth):
                 year = self.now.year
                 month = self.now.month
@@ -358,7 +364,7 @@ class DateService(object):
                         month += 1
                     elif last_week:
                         month -= 1
-                return (generateDate(year, month), dateMatch)
+                return (generateDate(year, month), range(stIdx, edIdx))
             elif (month_of_year):
                 year = self.now.year
                 month = self.now.month
@@ -369,7 +375,7 @@ class DateService(object):
                     if month <= month_of_year:
                         year -= 1
                 month = month_of_year
-                return (generateDate(year, month), dateMatch)
+                return (generateDate(year, month), range(stIdx, edIdx))
             # Convert extracted terms to datetime object
             elif today:
                 d = self.now
@@ -398,7 +404,7 @@ class DateService(object):
             year, mon, day = d.isoformat().split('-')
             d = '/'.join([mon, day[:2], year])
 
-            return (d, dateMatch)
+            return (d, range(stIdx, edIdx))
 
         matches = self._dayRegex.finditer(input)
 
