@@ -1,6 +1,6 @@
 dates
 =====
-a util to extract date info from string
+an util to extract date info from string
 It's base on [semantic](https://github.com/crm416/semantic)
 ## Installation
 ## Features
@@ -13,25 +13,25 @@ The regular formats include 4 types:
 * Month/Day/Year (e.g, '08/17/1926', '8/17/1926')
 * Year only(must between 1000-2020)
 
-The irregular formats will count the absolute dates, which will also include 3 types(still some bugs in this part):
+The irregular formats will consider the absolute dates, which include 3 types(still some bugs in this part):
 
 * tomorrow/tonight/today/now
 * next/this/last morning/afternoon/evening/night/Monday/.../Sunday/Month (e.g., 'this Monday', 'last night', 'next month')
 * Number day(s)/week(s) before/from Date, Date was shown as the 2 type above (e.g., '2 weeks before', 'week from now', 'four days before last Month')
 
 ## Samples
-You can use dates.extractDate to extract dates from a String, the output will be a list of tuple, contains date in 'month/day/year' format(use 'XX' to respect lost message)
+Use dates.extractDate to extract dates from string, the output will be a list of tuple, contains date in 'month/day/year' format(use 'XX' to respect lost message) and regex match result
 
     from dates import extractDates
-    extractDates('Jiang (Aug. 17, 1926-\inf) was 90 4 days before.')
+    extractDates('Jiang (Aug. 17, 1926-inf) was 90 4 days before.')
 
-You can use 'now=' to set the current date, the input should be in datetime format
+Use 'now=' to set the current date, the date should be in datetime format
 
     from dates import extractDates
     from datetime import datetime
     extractDates('Jiang was 90 four days before.', now=datetime(2016, 8, 21))
 
-Use 'irregular=False' only show regular format.
+Use 'irregular=False' will only show regular format.
 
     from dates import extractDates
     extractDates('Jiang was born in Aug 17, 1926, just 4 days before this Sunday, he was 90.', irregular=False)
