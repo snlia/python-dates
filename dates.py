@@ -85,7 +85,7 @@ class DateService(object):
 # |(Monday|...|Sunday)
     _dayRegex = re.compile(
         r"""(?ix)
-        ((week|day|month)s?\ (ago|before|from)\ )?
+        ((week|day|month)s?\ (ago|before|from)\ ?)?
         (
             tomorrow
             |now
@@ -132,6 +132,8 @@ class DateService(object):
         return input.replace('-', ' ').lower()
 
     def combineDays(self, DaysA, DaysB):
+        DaysA = [day for day in DaysA if day]
+        DaysB = [day for day in DaysB if day]
         if not DaysA:
             return DaysB
         if not DaysB:
@@ -154,8 +156,6 @@ class DateService(object):
                 return [itemB] + combine(A[1:], B[1:])
             else:
                 return [itemA] + combine(A[1:], B[1:])
-        DaysA = [day for day in DaysA if day]
-        DaysB = [day for day in DaysB if day]
         return combine(DaysA, DaysB)
 
     def extractDays(self, input):
@@ -283,10 +283,9 @@ class DateService(object):
 
             def numericalPrefix(dateMatch):
                 # Grab 'three' of 'three weeks from'
-                prefix = input[max(0, dateMatch - 50):dateMatch.start].strip().split(' ')
+                prefix = input[max(0, dateMatch.start() - 50):dateMatch.start()].strip().split(' ')
                 prefix.reverse()
                 prefix = [x for x in prefix if x != "and"]
-
                 # Generate best guess number
                 service = NumberService()
                 num = prefix[0]
@@ -301,7 +300,7 @@ class DateService(object):
                 return 1
 
             factor = numericalPrefix(dateMatch)
-            if (dateMatch.group(3) == 'before'):
+            if (dateMatch.group(3) == 'before' or dateMatch.group(3) == 'ago'):
                 factor = -factor
 
             if dateMatch.group(2) == 'week':
@@ -389,14 +388,10 @@ class DateService(object):
 
                 d = self.now + \
                     datetime.timedelta(days=num_days_away)
+            elif days_from:
+                d = self.now
             else:
-                num_days_away = 0
-                if next_week:
-                    num_days_away += 7
-                if last_week:
-                    num_days_away -= 7
-                d = self.now + \
-                    datetime.timedelta(days=num_days_away)
+                return None
 
             if days_from:
                 d += datetime.timedelta(days=days_from)
