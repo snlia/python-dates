@@ -13,7 +13,7 @@ The regular formats include 4 types:
 * Month/Day/Year (e.g, '08/17/1926', '8/17/1926')
 * Year only(must between 1000-2020)
 
-The irregular formats will consider the absolute dates, which include 3 types(still some bugs in this part):
+The irregular formats will consider the absolute dates, which include 3 types:
 
 * tomorrow/tonight/today/now
 * next/this/last morning/afternoon/evening/night/Monday/.../Sunday/Month (e.g., 'this Monday', 'last night', 'next month')
