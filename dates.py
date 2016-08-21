@@ -152,7 +152,7 @@ class DateService(object):
                 return [itemA] + combine(A[1:], B)
             if (itemB[1].end() <= itemA[1].start()):
                 return [itemB] + combine(A, B[1:])
-            if (itemA[0].find('X') >= 0):
+            if (itemA[0].count('X') >= itemB[0].count('X')):
                 return [itemB] + combine(A[1:], B[1:])
             else:
                 return [itemA] + combine(A[1:], B[1:])
