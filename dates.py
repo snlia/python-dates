@@ -160,6 +160,13 @@ class DateService(object):
         return combine(DaysA, DaysB)
 
     def extractDays(self, input):
+        def safe(exp):
+            """For safe evaluation of regex groups"""
+            try:
+                return exp()
+            except:
+                return None
+
         def extractMonth(dayMatch):
             if dayMatch[:3] in self.__startMonths__:
                 return self.__startMonths__.index(dayMatch[:3]) + 1
@@ -181,13 +188,6 @@ class DateService(object):
                 return year
 
         def handleMatch(dateMatch):
-            def safe(exp):
-                """For safe evaluation of regex groups"""
-                try:
-                    return exp()
-                except:
-                    return False
-
             month = safe(lambda: extractMonth(dateMatch.group(1)))
             day = safe(lambda: extractDay(dateMatch.group(2)))
             year = safe(lambda: extractYear(dateMatch.group(4)))
@@ -206,13 +206,6 @@ class DateService(object):
                 return (d, range(dateMatch.start(1), dateMatch.end(1)))
 
         def handleMatch2(dateMatch):
-            def safe(exp):
-                """For safe evaluation of regex groups"""
-                try:
-                    return exp()
-                except:
-                    return False
-
             month = safe(lambda: extractMonth(dateMatch.group(2)))
             day = safe(lambda: extractDay(dateMatch.group(1)))
             year = safe(lambda: extractYear(dateMatch.group(4)))
@@ -251,22 +244,22 @@ class DateService(object):
 
         # format1 month, day, year
         matches = self._dayRegex2.finditer(input)
-        Days = [handleMatch(dateMatch) for dateMatch in matches]
+        Days = [safe(lambda: handleMatch(dateMatch)) for dateMatch in matches]
 
         # format2 day, month, year
         matches = self._dayRegex3.finditer(input)
         Days = self.combineDays(Days,
-                                [handleMatch2(dateMatch) for dateMatch in matches])
+                                [safe(lambda: handleMatch2(dateMatch)) for dateMatch in matches])
 
         # month/day/year
         matches = self._dayRegex4.finditer(input)
         Days = self.combineDays(Days,
-                                [handleMatch3(dateMatch) for dateMatch in matches])
+                                [safe(lambda: handleMatch3(dateMatch)) for dateMatch in matches])
 
         # only year
         matches = self._dayRegex5.finditer(input)
         Days = self.combineDays(Days,
-                                [handleMatch4(dateMatch) for dateMatch in matches])
+                                [safe(lambda: handleMatch4(dateMatch)) for dateMatch in matches])
         return Days
 
     def extractIrrDays(self, input):
@@ -280,6 +273,13 @@ class DateService(object):
             A list of datetime objects containing the extracted date from the
             input snippet, or an empty list if none found.
         """
+        def safe(exp):
+            """For safe evaluation of regex groups"""
+            try:
+                return exp()
+            except:
+                return None
+
         def extractDayOfWeek(dateMatch):
             if dateMatch.group(8) in self.__daysOfWeek__:
                 return self.__daysOfWeek__.index(dateMatch.group(8))
@@ -293,14 +293,14 @@ class DateService(object):
             def numericalPrefix(dateMatch):
                 # Grab 'three' of 'three weeks from'
                 prefixStr = input[max(0, dateMatch.start() - 50):dateMatch.start()]
-                prefix = [(match.group(), match.start() - len(prefixStr))
-                          for match in re.finditer('[a-zA-Z-]', prefixStr)]
+                prefixStr = re.search('^[0-9a-zA-Z- ]+', prefixStr[::-1]).group()[::-1]
+                prefix = prefixStr.split(' ')
                 # Generate best guess number
                 service = NumberService()
                 for i in range(len(prefix)):
-                    num = ' '.join([st for st, off in prefix[i:]])
-                    if service.isValid(num):
-                        return (service.parse(num), prefix[i][1])
+                    num = ' '.join(prefix[i:]).strip()
+                    if num and service.isValid(num):
+                        return (service.parse(num), -len(' '.join(prefix[i:])))
                 return (1, 0)
 
             factor, off = numericalPrefix(dateMatch)
@@ -321,13 +321,6 @@ class DateService(object):
                 return self.__startMonths__.index(dayMatch[:3]) + 1
 
         def handleMatch(dateMatch):
-            def safe(exp):
-                """For safe evaluation of regex groups"""
-                try:
-                    return exp()
-                except:
-                    return False
-
             def generateDate(year, month):
                 '''generate date from year and month'''
                 while (month <= 0):
@@ -362,6 +355,16 @@ class DateService(object):
             if days_from:
                 days_from, off = days_from
                 stIdx += off
+
+            def ck(days, st):
+                if (st == 'day') and (abs(days) == 1): return True
+                if (st == 'week') and (abs(days) == 7): return True
+                if (st == 'year') and (abs(days) == 365): return True
+                return False
+            if days_from and dateMatch.group(1) and \
+            (ck(days_from, dateMatch.group(2)) == 1) and \
+                    ('s' in dateMatch.group(1)):
+                return None
 
             if (isYear):
                 year = self.now.year
@@ -429,7 +432,7 @@ class DateService(object):
 
         matches = self._dayRegex.finditer(input)
 
-        return [handleMatch(dateMatch) for dateMatch in matches]
+        return [safe(lambda: handleMatch(dateMatch)) for dateMatch in matches]
 
     def extractDay(self, input):
         """Returns the first time-related date found in the input string,
