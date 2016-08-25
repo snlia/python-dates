@@ -94,7 +94,7 @@ class DateService(object):
             |yesterday
             |(next|this|last)[\ \b](morning|afternoon|evening|night
                     |week|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday
-                    |Month|(Jan\.?(?:uary)?|Feb\.?(?:ruary)?|Mar\.?(?:ch)?|Apr\.?(?:il)?|May\.?|Jun\.?e?|Jul\.?y?|Aug\.?(?:ust)?|Sep\.?(?:tember)?|Oct\.?(?:ober)?|Nov\.?(?:ember)?|Dec\.?(?:ember)?))
+                    |Month|(Jan\.?(?:uary)?|Feb\.?(?:ruary)?|Mar\.?(?:ch)?|Apr\.?(?:il)?|May\.?|Jun\.?e?|Jul\.?y?|Aug\.?(?:ust)?|Sept?\.?(?:tember)?|Oct\.?(?:ober)?|Nov\.?(?:ember)?|Dec\.?(?:ember)?))
                     |year
             |(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)
         )?
@@ -102,12 +102,12 @@ class DateService(object):
 
     # mon day year
     _dayRegex2 = re.compile(
-            r'(?ix)(\bJan\.?(?:uary)?\b|\bFeb\.?(?:ruary)?\b|\bMar\.?(?:ch)?\b|\bApr\.?(?:il)?\b|\bMay\.?\b|\bJun\.?e?\b|\bJul\.?y?\b|\bAug\.?(?:ust)?\b|\bSep\.?(?:tember)?\b|\bOct\.?(?:ober)?\b|\bNov\.?(?:ember)?\b|\bDec\.?(?:ember)?\b)[., ]+(\w{,5})(.{,4}(\b\d{4}\b))?'
+            r'(?ix)(\bJan\.?(?:uary)?\b|\bFeb\.?(?:ruary)?\b|\bMar\.?(?:ch)?\b|\bApr\.?(?:il)?\b|\bMay\.?\b|\bJun\.?e?\b|\bJul\.?y?\b|\bAug\.?(?:ust)?\b|\bSept?\.?(?:tember)?\b|\bOct\.?(?:ober)?\b|\bNov\.?(?:ember)?\b|\bDec\.?(?:ember)?\b)[., ]+(\w{,5})(.{,4}(\b\d{4}\b))?'
     )
 
     # day mon year
     _dayRegex3 = re.compile(
-            r'(?ix)(\w{,5})[., ]+(\bJan\.?(?:uary)?\b|\bFeb\.?(?:ruary)?\b|\bMar\.?(?:ch)?\b|\bApr\.?(?:il)?\b|\bMay\.?\b|\bJun\.?e?\b|\bJul\.?y?\b|\bAug\.?(?:ust)?\b|\bSep\.?(?:tember)?\b|\bOct\.?(?:ober)?\b|\bNov\.?(?:ember)?\b|\bDec\.?(?:ember)?\b)(.{,4}(\b\d{4}\b))?'
+            r'(?ix)(\w{,5})[., ]+(\bJan\.?(?:uary)?\b|\bFeb\.?(?:ruary)?\b|\bMar\.?(?:ch)?\b|\bApr\.?(?:il)?\b|\bMay\.?\b|\bJun\.?e?\b|\bJul\.?y?\b|\bAug\.?(?:ust)?\b|\bSept?\.?(?:tember)?\b|\bOct\.?(?:ober)?\b|\bNov\.?(?:ember)?\b|\bDec\.?(?:ember)?\b)(.{,4}(\b\d{4}\b))?'
     )
 
     # month/day/year
@@ -293,15 +293,23 @@ class DateService(object):
             def numericalPrefix(dateMatch):
                 # Grab 'three' of 'three weeks from'
                 prefixStr = input[max(0, dateMatch.start() - 50):dateMatch.start()]
-                prefixStr = re.search('^[0-9a-zA-Z- ]+', prefixStr[::-1]).group()[::-1]
-                prefix = prefixStr.split(' ')
+                prefixStr = re.search('^[0-9a-zA-Z- ,]+', prefixStr[::-1]).group()[::-1]
+                prefixAll = prefixStr.split(' ')
+                prefixAll.reverse()
+                prefix = [(idx, x) for idx, x in enumerate(prefixAll)
+                          if x != '' and x != 'and' and x != ',']
                 # Generate best guess number
                 service = NumberService()
+                res = (1, 0)
                 for i in range(len(prefix)):
-                    num = ' '.join(prefix[i:]).strip()
-                    if num and service.isValid(num):
-                        return (service.parse(num), -len(' '.join(prefix[i:])))
-                return (1, 0)
+                    num = ' '.join([st for idx, st in prefix[i::-1]])
+                    print(num)
+                    if not service.isValid(num):
+                        return res
+                    else:
+                        res = (service.parse(num),
+                               -len(' '.join(prefixAll[:prefix[i][0] + 1])))
+                return res
 
             factor, off = numericalPrefix(dateMatch)
             if (dateMatch.group(3) == 'before' or dateMatch.group(3) == 'ago'):

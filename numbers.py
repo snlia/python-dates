@@ -98,6 +98,7 @@ class NumberService(object):
         Returns:
             A double representation of the words.
         """
+        words = words.replace(',', '')
         def exact(words):
             """If already represented as float or int, convert."""
             try:
